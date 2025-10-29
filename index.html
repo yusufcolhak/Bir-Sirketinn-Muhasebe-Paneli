@@ -1,0 +1,503 @@
+<!-- index-human.html -->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bir Şirketin Muhasebe Paneli</title>
+
+  <!-- Kütüphaneler (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Temel sayfa stilleri */
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: rgba(255,255,255,0.58);
+      color: #000;
+      transition: background-color .35s, color .35s;
+    }
+
+    header {
+      background: linear-gradient(135deg, #325dbc, #2A4ACF);
+      color: #fff;
+      padding: 1.5rem 0;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+
+    .section-title { border-bottom: 2px solid #1e63d8; padding-bottom: .5rem; color: #1e63d8; font-weight: 600; }
+
+    .custom-btn { border-radius: 8px; font-weight: 500; padding: .55rem 1.1rem; }
+
+    .chart-container { position: relative; height: 320px; }
+
+    /* Koyu tema */
+    body.dark { background-color: #000; color: #e9e9e9; }
+    body.dark header { background: linear-gradient(135deg, #29365e, #192040); }
+    body.dark .card { background: #2b2c34; color: #ddd; }
+
+    .readonly-field { background-color: #f8f9fa; }
+    body.dark .readonly-field { background-color: #3a3b44; color: #ddd; }
+
+    .zarar { color: #e74a3b !important; }
+    .kar { color: #1cc88a !important; }
+    .positive { color: #1cc88a; }
+    .negative { color: #e74a3b; }
+
+    /* küçük düzenlemeler */
+    .is-invalid { border-color: #dc3545; box-shadow: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="h4 mb-0"><i class="fa-solid fa-chart-line me-2"></i>Bir Şirketin Muhasebe Paneli</h1>
+        <p class="mb-0">Satış ve performans verilerinizi yönetin</p>
+      </div>
+      <button id="toggleThemeBtn" class="btn btn-light custom-btn">
+        <i class="fa-solid fa-moon me-2"></i>Tema Değiştir
+      </button>
+    </div>
+  </header>
+
+  <main class="container my-4">
+    <!-- Veri Girişi Bölümü -->
+    <section class="card p-4 mb-4">
+      <h4 class="section-title mb-3"><i class="fa-solid fa-pen-to-square me-2"></i>Veri Girişi</h4>
+      <div class="row">
+        <div class="col-md-6">
+          <label class="form-label">Aylar (Virgülle ayırın)</label>
+          <input type="text" id="inputAylar" class="form-control mb-3" value="Ocak, Şubat, Mart, Nisan, Mayıs, Haziran">
+
+          <label class="form-label">Satışlar (₺)</label>
+          <input type="text" id="inputSatis" class="form-control mb-3" value="25000, 28000, 32000, 35000, 42000, 48000">
+
+          <label class="form-label">Giderler (₺)</label>
+          <input type="text" id="inputGider" class="form-control mb-3" value="18000, 20000, 22000, 24000, 26000, 28000">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Toplam Satış (₺) - Otomatik</label>
+          <input type="text" id="outToplamSatis" class="form-control mb-3 readonly-field" readonly>
+
+          <label class="form-label">Toplam Gider (₺) - Otomatik</label>
+          <input type="text" id="outToplamGider" class="form-control mb-3 readonly-field" readonly>
+
+          <label class="form-label">Net Kar/Zarar (₺) - Otomatik</label>
+          <input type="text" id="outNet" class="form-control mb-3 readonly-field" readonly>
+
+          <label class="form-label">Toplam Müşteri</label>
+          <input type="number" id="inputMusteri" class="form-control mb-3" value="1250">
+
+          <label class="form-label">Büyüme Oranı (%) - Otomatik</label>
+          <input type="text" id="outBuyume" class="form-control mb-3 readonly-field" readonly>
+
+          <label class="form-label">Kar Oranı (%) - Otomatik</label>
+          <input type="text" id="outKarOrani" class="form-control mb-3 readonly-field" readonly>
+        </div>
+      </div>
+
+      <div class="text-center mt-3">
+        <button id="btnGuncelle" class="btn btn-primary custom-btn me-2"><i class="fa-solid fa-rotate me-1"></i>Verileri Güncelle</button>
+        <button id="btnVarsayilan" class="btn btn-secondary custom-btn"><i class="fa-solid fa-undo me-1"></i>Varsayılan</button>
+      </div>
+    </section>
+
+    <!-- İstatistik Kartları -->
+    <section class="row g-4 mb-4">
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-bag-shopping fa-2x text-primary mb-2"></i>
+          <h5 id="cardToplamSatis">245,000 ₺</h5>
+          <small>Toplam Satış</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-money-bill-wave fa-2x text-danger mb-2"></i>
+          <h5 id="cardToplamGider">138,000 ₺</h5>
+          <small>Toplam Gider</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-scale-balanced fa-2x text-success mb-2"></i>
+          <h5 id="cardNet">107,000 ₺</h5>
+          <small>Net Kar/Zarar</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-users fa-2x text-info mb-2"></i>
+          <h5 id="cardMusteri">1,250</h5>
+          <small>Toplam Müşteri</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-chart-line fa-2x text-warning mb-2"></i>
+          <h5 id="cardBuyume">%18.5</h5>
+          <small>Büyüme Oranı</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-percent fa-2x text-success mb-2"></i>
+          <h5 id="cardKarOrani">%28.3</h5>
+          <small>Kar Oranı</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-calculator fa-2x text-primary mb-2"></i>
+          <h5 id="cardKarMiktari">69,335 ₺</h5>
+          <small>Kar Miktarı</small>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card p-3 text-center">
+          <i class="fa-solid fa-target fa-2x text-info mb-2"></i>
+          <h5 id="cardVerimlilik">%43.7</h5>
+          <small>Toplam Verimlilik</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grafikler -->
+    <section class="row g-4">
+      <div class="col-lg-6">
+        <div class="card p-3">
+          <h6><i class="fa-solid fa-chart-line me-2 text-primary"></i>Satış ve Gider Grafiği</h6>
+          <div class="chart-container"><canvas id="chartSatisGider"></canvas></div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card p-3">
+          <h6><i class="fa-solid fa-chart-bar me-2 text-success"></i>Kar Grafiği</h6>
+          <div class="chart-container"><canvas id="chartKar"></canvas></div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card p-3">
+          <h6><i class="fa-solid fa-chart-bar me-2 text-danger"></i>Zarar Grafiği</h6>
+          <div class="chart-container"><canvas id="chartZarar"></canvas></div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card p-3">
+          <h6><i class="fa-solid fa-chart-pie me-2 text-warning"></i>Kar/Zarar Dağılımı</h6>
+          <div class="chart-container"><canvas id="chartKarZarar"></canvas></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script>
+    /**
+     * Bu script bölümünde:
+     * - Verileri parse eden yardımcı fonksiyonlar,
+     * - Hesaplamalar (toplam, büyüme, kar oranı),
+     * - Chart.js konfigürasyonları,
+     * - DOM güncellemeleri yer alır.
+     *
+     * Kod okunaklılığı için küçük fonksiyonlara bölündü.
+     */
+
+    // --- Yardımcı fonksiyonlar ---
+    function onlyDigitsCommaSpace(str) {
+      return /^[0-9,\s]+$/.test(str);
+    }
+
+    function parseNumberList(input) {
+      // "25000, 28000" -> [25000, 28000]
+      return input.split(",").map(s => parseInt(s.trim(), 10));
+    }
+
+    function sumArray(arr) {
+      return arr.reduce((acc, v) => acc + v, 0);
+    }
+
+    function formatTL(amount) {
+      return new Intl.NumberFormat('tr-TR').format(amount);
+    }
+
+    function addClassIf(elem, cls, cond) {
+      if (cond) elem.addClass(cls); else elem.removeClass(cls);
+    }
+
+    // Renk kararları
+    function sınıfKarZarar(miktar) { return miktar >= 0 ? 'kar' : 'zarar'; }
+    function sınıfYuzde(yuzde) { return yuzde >= 0 ? 'positive' : 'negative'; }
+
+    // --- Hesaplama fonksiyonları ---
+    function hesaplaBuyume(satisDizisi) {
+      if (!satisDizisi || satisDizisi.length < 2) return 0;
+      const ilk = satisDizisi[0];
+      const son = satisDizisi[satisDizisi.length - 1];
+      if (ilk === 0) return 0;
+      return ((son - ilk) / ilk) * 100;
+    }
+
+    function hesaplaKarOrani(toplamSatis, toplamGider) {
+      if (toplamSatis === 0) return 0;
+      const net = toplamSatis - toplamGider;
+      return (net / toplamSatis) * 100;
+    }
+
+    // --- Chart nesneleri (dışarda tutuluyor) ---
+    let chartSatisGider, chartKar, chartZarar, chartKarZarar;
+
+    function createCharts() {
+      // Satış-Gider: line chart
+      const ctx1 = document.getElementById('chartSatisGider').getContext('2d');
+      chartSatisGider = new Chart(ctx1, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // Kar: bar
+      const ctx2 = document.getElementById('chartKar').getContext('2d');
+      chartKar = new Chart(ctx2, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // Zarar: bar (mutlak değerlerle gösterim)
+      const ctx3 = document.getElementById('chartZarar').getContext('2d');
+      chartZarar = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label ? context.dataset.label + ': ' : '';
+                  if (context.parsed.y !== null) {
+                    label += formatTL(Math.abs(context.parsed.y)) + ' ₺';
+                  }
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return formatTL(Math.abs(value)) + ' ₺';
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Kar/Zarar dağılımı: grouped bar
+      const ctx4 = document.getElementById('chartKarZarar').getContext('2d');
+      chartKarZarar = new Chart(ctx4, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let lbl = context.dataset.label ? context.dataset.label + ': ' : '';
+                  if (context.parsed.y !== null) {
+                    lbl += formatTL(context.parsed.y) + ' ₺';
+                  }
+                  return lbl;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(v) { return formatTL(v) + ' ₺'; }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // --- Ana veri işleme ve DOM güncelleme ---
+    function guncelleVeriler() {
+      const rawSatis = $('#inputSatis').val();
+      const rawGider = $('#inputGider').val();
+
+      // Kullanıcı hatalarını kontrol et
+      if (!onlyDigitsCommaSpace(rawSatis) || !onlyDigitsCommaSpace(rawGider)) {
+        showAlert('Satışlar ve giderler alanlarına sadece sayı giriniz!');
+        return;
+      }
+
+      const aylar = $('#inputAylar').val().split(',').map(s => s.trim());
+      const satisList = parseNumberList(rawSatis);
+      const giderList = parseNumberList(rawGider);
+
+      // Hesaplamalar
+      const toplamSatis = sumArray(satisList);
+      const toplamGider = sumArray(giderList);
+      const net = toplamSatis - toplamGider;
+
+      // Aylık kar/zarar (pozitif/negatif ayrımı)
+      const aylikKar = satisList.map((s, i) => s - (giderList[i] || 0));
+      const pozitifKar = aylikKar.map(k => k > 0 ? k : 0);
+      const zararlar = aylikKar.map(k => k < 0 ? Math.abs(k) : 0);
+
+      // Oranlar
+      const buyume = hesaplaBuyume(satisList);
+      const karOrani = hesaplaKarOrani(toplamSatis, toplamGider);
+      const karMiktari = (toplamSatis * karOrani) / 100;
+      const verimlilik = toplamSatis ? ((net / toplamSatis) * 100) : 0;
+
+      // Form alanlarını güncelle
+      $('#outToplamSatis').val(formatTL(toplamSatis) + ' ₺');
+      $('#outToplamGider').val(formatTL(toplamGider) + ' ₺');
+      $('#outNet').val(formatTL(net) + ' ₺');
+
+      // Renk sınıfları
+      $('#outNet').removeClass('kar zarar').addClass(sınıfKarZarar(net));
+      $('#outBuyume').val('%' + buyume.toFixed(1));
+      $('#outBuyume').removeClass('positive negative').addClass(sınıfYuzde(buyume));
+      $('#outKarOrani').val('%' + karOrani.toFixed(1));
+      $('#outKarOrani').removeClass('positive negative').addClass(sınıfYuzde(karOrani));
+
+      // Kartları güncelle
+      $('#cardToplamSatis').text(formatTL(toplamSatis) + ' ₺');
+      $('#cardToplamGider').text(formatTL(toplamGider) + ' ₺');
+      $('#cardNet').text(formatTL(net) + ' ₺');
+      $('#cardNet').removeClass('kar zarar').addClass(sınıfKarZarar(net));
+      $('#cardMusteri').text($('#inputMusteri').val());
+      $('#cardBuyume').text('%' + buyume.toFixed(1));
+      $('#cardBuyume').removeClass('positive negative').addClass(sınıfYuzde(buyume));
+      $('#cardKarOrani').text('%' + karOrani.toFixed(1));
+      $('#cardKarOrani').removeClass('positive negative').addClass(sınıfYuzde(karOrani));
+      $('#cardKarMiktari').text(formatTL(karMiktari) + ' ₺');
+      $('#cardKarMiktari').removeClass('kar zarar').addClass(sınıfKarZarar(karMiktari));
+      $('#cardVerimlilik').text('%' + verimlilik.toFixed(1));
+      $('#cardVerimlilik').removeClass('positive negative').addClass(sınıfYuzde(verimlilik));
+
+      // Grafik verilerini güncelle
+      updateCharts(aylar, satisList, giderList, pozitifKar, zararlar, aylikKar);
+
+      // Başarı bildirimi
+      showAlert('Veriler güncellendi!', 'success');
+    }
+
+    // Chart güncelleme fonksiyonu
+    function updateCharts(labels, satis, gider, pozKar, zarar, netAylik) {
+      // Satış-Gider
+      chartSatisGider.data = {
+        labels: labels,
+        datasets: [
+          { label: 'Satışlar', data: satis, borderColor: '#4e73df', backgroundColor: 'rgba(78,115,223,0.1)', fill: true, tension: .3 },
+          { label: 'Giderler', data: gider, borderColor: '#e74a3b', backgroundColor: 'rgba(231,74,59,0.1)', fill: true, tension: .3 }
+        ]
+      };
+      chartSatisGider.update();
+
+      // Kar (sadece pozitifler)
+      chartKar.data = { labels: labels, datasets: [{ label: 'Kar (₺)', data: pozKar, backgroundColor: '#1cc88a', borderRadius: 6 }] };
+      chartKar.update();
+
+      // Zarar (mutlak değer)
+      chartZarar.data = { labels: labels, datasets: [{ label: 'Zarar (₺)', data: zarar, backgroundColor: '#e74a3b', borderRadius: 6 }] };
+      chartZarar.update();
+
+      // Kar/Zarar dağılımı
+      chartKarZarar.data = {
+        labels: labels,
+        datasets: [
+          { label: 'Satışlar', data: satis, backgroundColor: '#4e73df', borderRadius: 6 },
+          { label: 'Giderler', data: gider, backgroundColor: '#e74a3b', borderRadius: 6 },
+          { label: 'Net Kar/Zarar', data: netAylik, backgroundColor: netAylik.map(n => n >= 0 ? '#1cc88a' : '#f6c23e'), borderRadius: 6 }
+        ]
+      };
+      chartKarZarar.update();
+    }
+
+    // Basit uyarı gösterici (sayfanın üstünde kısa süreli)
+    function showAlert(text, type = 'danger') {
+      const alert = $(`<div class="alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3"><i class="fa-solid fa-exclamation-triangle me-1"></i>${text}</div>`);
+      $('body').append(alert);
+      setTimeout(() => alert.fadeOut(400, () => alert.remove()), 3000);
+    }
+
+    // Varsayılan verileri yükle
+    function loadDefaultData() {
+      $('#inputAylar').val('Ocak, Şubat, Mart, Nisan, Mayıs, Haziran');
+      $('#inputSatis').val('25000, 28000, 32000, 35000, 42000, 48000');
+      $('#inputGider').val('18000, 20000, 22000, 24000, 26000, 28000');
+      $('#inputMusteri').val('1250');
+      guncelleVeriler();
+    }
+
+    // Zarar senaryosu (test için)
+    function loadLossScenario() {
+      $('#inputAylar').val('Ocak, Şubat, Mart, Nisan, Mayıs, Haziran');
+      $('#inputSatis').val('25000, 22000, 18000, 15000, 12000, 10000');
+      $('#inputGider').val('18000, 20000, 22000, 24000, 26000, 28000');
+      $('#inputMusteri').val('980');
+      guncelleVeriler();
+      showAlert('Zarar verileri yüklendi! Zarar grafiğini inceleyin.', 'warning');
+    }
+
+    // Başlangıç işlemleri
+    $(function() {
+      createCharts();
+      guncelleVeriler();
+
+      $('#btnGuncelle').on('click', guncelleVeriler);
+      $('#btnVarsayilan').on('click', loadDefaultData);
+
+      // Sadece ek bir test butonu ekleyelim (orijinal davranış korunuyor)
+      $('#btnVarsayilan').after('<button id="btnZararSenaryosu" class="btn btn-warning custom-btn ms-2"><i class="fa-solid fa-exclamation-triangle me-1"></i>Zarar Senaryosu</button>');
+      $('#btnZararSenaryosu').on('click', loadLossScenario);
+
+      // Tema butonu
+      $('#toggleThemeBtn').on('click', function() {
+        $('body').toggleClass('dark');
+        const koyu = $('body').hasClass('dark');
+        $(this).html(koyu ? '<i class="fa-solid fa-sun me-2"></i>Açık Tema' : '<i class="fa-solid fa-moon me-2"></i>Koyu Tema');
+      });
+
+      // Gerçek zamanlı giriş validasyonu
+      $('#inputSatis, #inputGider').on('input', function() {
+        const val = $(this).val();
+        if (!onlyDigitsCommaSpace(val) && val !== '') $(this).addClass('is-invalid');
+        else $(this).removeClass('is-invalid');
+      });
+    });
+  </script>
+</body>
+</html>
