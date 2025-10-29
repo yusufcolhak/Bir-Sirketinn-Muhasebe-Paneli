@@ -1,4 +1,4 @@
-Bir-Sirketinn-Muhasebe-Paneli
+Bir-Şirketin-Muhasebe-Paneli
 
 
 Bu proje, bir şirketin satış, gider ve kar/zarar analizlerini kolayca yönetebilmesi için hazırlanmış web tabanlı bir muhasebe panelidir. Kullanıcı, aylık verilerini girerek otomatik olarak toplam satış, toplam gider, net kar/zarar, büyüme oranı ve kar oranını görüntüleyebilir. Grafikler ve tema geçişi sayesinde veriler görsel olarak da izlenebilir.
